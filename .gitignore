@@ -1,10 +1,10 @@
 # Ignore Terraform state files and lock files
-terraform/.terraform.lock.hcl
-terraform/terraform.tfstate
-terraform/terraform.tfstate.backup
+infra/terraform/.terraform.lock.hcl
+infra/terraform/terraform.tfstate
+infra/terraform/terraform.tfstate.backup
 
 # Ignore Terraform provider binaries and ancillary files
-terraform/.terraform/
+infra/terraform/.terraform/
 
 !.terraform/plugins/
 
