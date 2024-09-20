@@ -1,193 +1,177 @@
-Here is a detailed README file that explains the purpose and use of the Terraform configuration you have shared:
+# ODT Terraform Infrastructure
 
----
-
-# AWS S3 and AppFlow Terraform Configuration
-
-This Terraform script creates two AWS S3 buckets, sets up the necessary permissions for AWS AppFlow to interact with these buckets, and optionally defines a flow for transferring data between them. The configuration primarily focuses on enabling AppFlow to access both the source and destination buckets, with the necessary actions such as listing, getting, and putting objects.
+This Terraform configuration sets up the necessary AWS infrastructure for the ODT (Operational Data Transfer) project in the development (dev) environment. It provisions Amazon S3 buckets for source and destination data storage, configures appropriate IAM policies for AWS AppFlow integration, and establishes an AppFlow flow to transfer data from the source to the destination bucket.
 
 ## Table of Contents
-- [Resources](#resources)
-- [Configuration Overview](#configuration-overview)
-- [Usage](#usage)
-- [Optional AppFlow Configuration](#optional-appflow-configuration)
-- [Future Enhancements](#future-enhancements)
 
-## Resources
+- [ODT Terraform Infrastructure](#odt-terraform-infrastructure)
+  - [Table of Contents](#table-of-contents)
+  - [Prerequisites](#prerequisites)
+  - [Usage](#usage)
+  - [Resources Created](#resources-created)
+    - [S3 Buckets](#s3-buckets)
+    - [IAM Policies](#iam-policies)
+    - [AppFlow Flow](#appflow-flow)
+  - [Outputs](#outputs)
+  - [Project Structure](#project-structure)
+  - [Notes](#notes)
+  - [License](#license)
+- [Acknowledgements](#acknowledgements)
+- [Contact](#contact)
 
-### 1. S3 Bucket: `example_source`
-An S3 bucket named `example-source-asda234234324` is created to serve as the source bucket for AppFlow.
+## Prerequisites
 
-### 2. IAM Policy for Source Bucket: `example_source`
-The policy grants AWS AppFlow permissions to:
-- List the objects in the `example_source` bucket.
-- Retrieve (`GetObject`) objects from the bucket.
+Before deploying this Terraform configuration, ensure you have the following:
 
-### 3. S3 Bucket Policy: `example_source`
-The generated IAM policy is attached to the source bucket to enforce permissions for AppFlow's access.
-
-### 4. (Optional) S3 Bucket: `example_destination`
-An S3 bucket named `example-destination-121213123123123` is intended to be the destination bucket for AppFlow.
-
-### 5. (Optional) IAM Policy for Destination Bucket: `example_destination`
-The policy grants AWS AppFlow permissions to:
-- Put objects into the `example_destination` bucket.
-- Manage multipart uploads.
-- Modify access control lists (ACLs) on objects in the destination bucket.
-
-### 6. (Optional) AppFlow Configuration: `example`
-An optional AWS AppFlow flow definition that:
-- Pulls data from the source bucket (`example_source`).
-- Pushes the data into the destination bucket (`example_destination`).
-- Configures basic mapping for a specific field from the source to the destination.
-- Triggers the flow manually (`OnDemand`).
-
-## Configuration Overview
-
-The following elements are defined in the Terraform configuration:
-
-### S3 Source Bucket Configuration
-```hcl
-resource "aws_s3_bucket" "example_source" {
-  bucket = "example-source-asda234234324"
-}
-```
-This creates the `example_source` S3 bucket, which will be used as the source in AppFlow.
-
-### IAM Policy for Source Bucket
-```hcl
-data "aws_iam_policy_document" "example_source" {
-  statement {
-    sid    = "AllowAppFlowSourceActions"
-    effect = "Allow"
-    principals {
-      type        = "Service"
-      identifiers = ["appflow.amazonaws.com"]
-    }
-    actions = ["s3:ListBucket"]
-    resources = ["arn:aws:s3:::example-source-asda234234324"]
-  }
-  statement {
-    sid    = "AllowAppFlowObjectActions"
-    effect = "Allow"
-    principals {
-      type        = "Service"
-      identifiers = ["appflow.amazonaws.com"]
-    }
-    actions = ["s3:GetObject"]
-    resources = ["arn:aws:s3:::example-source-asda234234324/*"]
-  }
-}
-```
-This policy allows AppFlow to:
-- List the contents of the source bucket.
-- Get objects from the source bucket.
-
-### S3 Bucket Policy Attachment
-```hcl
-resource "aws_s3_bucket_policy" "example_source" {
-  bucket = aws_s3_bucket.example_source.id
-  policy = data.aws_iam_policy_document.example_source.json
-}
-```
-This attaches the generated IAM policy to the `example_source` bucket, allowing AppFlow access.
-
-### Optional Destination Bucket and Policy
-```hcl
-resource "aws_s3_bucket" "example_destination" {
-  bucket = "example-destination-121213123123123"
-}
-```
-This creates a second S3 bucket, `example_destination`, which serves as the destination for the AppFlow flow.
-
-```hcl
-data "aws_iam_policy_document" "example_destination" {
-  statement {
-    sid    = "AllowAppFlowDestinationActions"
-    effect = "Allow"
-    principals {
-      type        = "Service"
-      identifiers = ["appflow.amazonaws.com"]
-    }
-    actions = ["s3:PutObject", "s3:AbortMultipartUpload", "s3:ListMultipartUploadParts", "s3:GetBucketAcl", "s3:PutObjectAcl"]
-    resources = [
-      "arn:aws:s3:::example-destination-121213123123123",
-      "arn:aws:s3:::example-destination-121213123123123/*"
-    ]
-  }
-}
-```
-This policy gives AppFlow the necessary permissions to upload and manage objects in the destination bucket.
-
-### Optional AppFlow Configuration
-```hcl
-resource "aws_appflow_flow" "example" {
-  name = "example"
-
-  source_flow_config {
-    connector_type = "S3"
-    source_connector_properties {
-      s3 {
-        bucket_name   = aws_s3_bucket_policy.example_source.bucket
-        bucket_prefix = "example"
-      }
-    }
-  }
-
-  destination_flow_config {
-    connector_type = "S3"
-    destination_connector_properties {
-      s3 {
-        bucket_name = aws_s3_bucket_policy.example_destination.bucket
-
-        s3_output_format_config {
-          prefix_config {
-            prefix_type = "PATH"
-          }
-        }
-      }
-    }
-  }
-
-  task {
-    source_fields     = ["exampleField"]
-    destination_field = "exampleField"
-    task_type         = "Map"
-
-    connector_operator {
-      s3 = "NO_OP"
-    }
-  }
-
-  trigger_config {
-    trigger_type = "OnDemand"
-  }
-}
-```
-This section defines an AppFlow flow that:
-- Pulls data from the `example_source` bucket.
-- Sends the data to the `example_destination` bucket.
-- Maps a single field (`exampleField`).
-- Is triggered manually.
+- **Terraform**: Version 0.12 or later. [Download Terraform](https://www.terraform.io/downloads.html)
+- **AWS CLI**: Configured with appropriate credentials and permissions. [Install AWS CLI](https://aws.amazon.com/cli/)
+- **AWS Account**: With permissions to create S3 buckets, IAM policies, and AppFlow flows.
 
 ## Usage
 
-1. Modify the bucket names and policy details to suit your use case.
-2. Apply the Terraform configuration:
+1. **Clone the Repository**
+
+   ```bash
+   git clone https://github.com/your-repo/odt-terraform-infrastructure.git
+   cd odt-terraform-infrastructure
+   ```
+
+2. **Initialize Terraform**
+
+   Initialize the Terraform working directory. This command downloads the necessary provider plugins.
+
    ```bash
    terraform init
+   ```
+
+3. **Review the Plan**
+
+   Generate and review the execution plan to understand the changes Terraform will make.
+
+   ```bash
+   terraform plan
+   ```
+
+4. **Apply the Configuration**
+
+   Apply the Terraform configuration to create the resources.
+
+   ```bash
    terraform apply
    ```
 
-## Optional AppFlow Configuration
+   Confirm the apply step by typing `yes` when prompted.
 
-To enable the AppFlow flow, uncomment the relevant sections in the Terraform script. These sections are currently commented out for those who only need the bucket and policy setup.
+5. **Retrieve Outputs**
 
-## Future Enhancements
+   After a successful apply, Terraform will display the outputs, including the names of the created S3 buckets.
 
-- Add more complex field mappings to the AppFlow configuration.
-- Set up automatic triggers for AppFlow based on schedule or event-driven mechanisms.
+   ```bash
+   terraform output
+   ```
 
---- 
+## Resources Created
 
-Let me know if you'd like to further customize or modify the README!
+### S3 Buckets
+
+1. **ODT Source Bucket (Dev Environment)**
+
+   - **Resource Name**: `aws_s3_bucket.odt_source_dev`
+   - **Bucket Name**: `odt-source-dev-<random_suffix>`
+   - **Tags**:
+     - Name: `odt-source-dev`
+     - Environment: `dev`
+     - Project: `odt`
+     - ManagedBy: `Terraform`
+
+   This bucket serves as the source for data in the ODT pipeline.
+
+2. **ODT Destination Bucket (Dev Environment)**
+
+   - **Resource Name**: `aws_s3_bucket.odt_destination_dev`
+   - **Bucket Name**: `odt-destination-dev-<random_suffix>`
+   - **Tags**:
+     - Name: `odt-destination-dev`
+     - Environment: `dev`
+     - Project: `odt`
+     - ManagedBy: `Terraform`
+
+   This bucket serves as the destination for data processed by the ODT pipeline.
+
+### IAM Policies
+
+1. **Source Bucket Policy**
+
+   - **Resource Name**: `aws_s3_bucket_policy.odt_source_policy`
+   - **Policy**: Allows AWS AppFlow to perform `s3:ListBucket` and `s3:GetObject` actions on the source bucket.
+
+2. **Destination Bucket Policy**
+
+   - **Resource Name**: `aws_s3_bucket_policy.odt_destination_policy`
+   - **Policy**: Allows AWS AppFlow to perform actions such as `s3:PutObject`, `s3:AbortMultipartUpload`, `s3:ListMultipartUploadParts`, `s3:ListBucketMultipartUploads`, `s3:GetBucketAcl`, `s3:PutObjectAcl`, and `s3:ListBucket` on the destination bucket.
+
+### AppFlow Flow
+
+- **Resource Name**: `aws_appflow_flow.odt_aws_to_s3_flow`
+- **Flow Name**: `odt-aws-to-s3-dev`
+- **Configuration**:
+  - **Source**: ODT Source S3 Bucket
+    - **Connector Type**: S3
+    - **Bucket Prefix**: `odt-source-dev-data.csv`
+  - **Destination**: ODT Destination S3 Bucket
+    - **Connector Type**: S3
+    - **Output Format**: Path-based prefix
+  - **Tasks**:
+    - **FilterTask**: Projects specific fields (`CustomerID`, `FirstName`, `LastName`, `Email`, `Phone`) from the source data.
+    - **Mapping Tasks**: Maps each source field to the corresponding destination field without any transformation.
+  - **Trigger**: On-demand (manual trigger)
+
+## Outputs
+
+After applying the Terraform configuration, the following outputs will be available:
+
+- **`odt_source_s3_bucket_name`**
+  - **Description**: The name of the ODT source S3 bucket (Dev environment)
+  - **Value**: `odt-source-dev-<random_suffix>`
+
+- **`odt_destination_s3_bucket_name`**
+  - **Description**: The name of the ODT destination S3 bucket (Dev environment)
+  - **Value**: `odt-destination-dev-<random_suffix>`
+
+You can access these outputs using the `terraform output` command.
+
+## Project Structure
+
+```
+odt-terraform-infrastructure/
+├── main.tf          # Main Terraform configuration file
+├── variables.tf     # (Optional) Variable definitions
+├── outputs.tf       # Output definitions
+├── README.md        # This README file
+└── terraform.tfstate # Terraform state file (generated after apply)
+```
+
+*Note: The state file (`terraform.tfstate`) is generated after applying the configuration and should be managed securely.*
+
+## Notes
+
+- **Bucket Naming**: The S3 bucket names include a random suffix to ensure uniqueness across AWS. The `random_string` resource generates a 6-character lowercase alphanumeric string for this purpose.
+
+- **Access Control**: The ACL for both S3 buckets is commented out (`# acl = "private"`). By default, S3 buckets are private. Ensure that the appropriate access controls are in place based on your security requirements.
+
+- **AppFlow Trigger**: The AppFlow flow is configured with an `OnDemand` trigger. This means the flow needs to be triggered manually. You can modify the trigger configuration to suit your automation needs (e.g., schedule-based triggers).
+
+- **Terraform State Management**: Ensure that the Terraform state file is stored securely, especially if using remote backends. Consider using Terraform Cloud, AWS S3 with state locking, or other secure backends for state management.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
+# Acknowledgements
+
+- [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
+- [AWS AppFlow Documentation](https://docs.aws.amazon.com/appflow/index.html)
+
+# Contact
+
+For any questions or issues, please open an issue in the repository or contact the maintainer at [youremail@example.com](mailto:youremail@example.com).
