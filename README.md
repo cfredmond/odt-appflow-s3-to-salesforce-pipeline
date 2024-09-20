@@ -32,8 +32,8 @@ Before deploying this Terraform configuration, ensure you have the following:
 1. **Clone the Repository**
 
    ```bash
-   git clone https://github.com/your-repo/odt-terraform-infrastructure.git
-   cd odt-terraform-infrastructure
+   git clone https://github.com/cfredmond/odt-aws-to-salesforce-pipeline.git
+   cd odt-aws-to-salesforce-pipeline/terraform
    ```
 
 2. **Initialize Terraform**
@@ -174,4 +174,4 @@ This project is licensed under the [MIT License](LICENSE).
 
 # Contact
 
-For any questions or issues, please open an issue in the repository or contact the maintainer at [youremail@example.com](mailto:youremail@example.com).
+For any questions or issues, please open an issue in the repository or contact the maintainer at [charles.redmond@gmail.com](mailto:charles.redmond@gmail.com).
