@@ -1,0 +1,5 @@
+environment         = "dev"
+project_name        = "odt"
+managed_by          = "Terraform"
+source_bucket_prefix = "odt-source-dev-data.csv"
+appflow_service_principal = "appflow.amazonaws.com"
